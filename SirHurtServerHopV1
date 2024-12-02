@@ -1,0 +1,47 @@
+local Player = game.Players.LocalPlayer    
+local Http = game:GetService("HttpService")
+local TPS = game:GetService("TeleportService")
+local Api = "https://games.roblox.com/v1/games/"
+
+local _place,_id = game.PlaceId, game.JobId
+-- Asc for lowest player count, Desc for highest player count
+local _servers = Api.._place.."/servers/Public?sortOrder=Asc&limit=10"
+
+-- Function to list servers and handle errors
+function ListServers(cursor)
+    local success, response = pcall(function()
+        return game:HttpGet(_servers .. ((cursor and "&cursor="..cursor) or ""))
+    end)
+    if success then
+        return Http:JSONDecode(response)
+    else
+        warn("Failed to fetch servers: " .. response)
+        return nil
+    end
+end
+
+time_to_wait = 0 -- Set wait time between hops (2 minutes)
+
+-- Function to hop to a random server
+function HopToServer()
+    local Servers = ListServers()
+    if Servers and #Servers.data > 0 then
+        local Server = Servers.data[math.random(1, #Servers.data)]
+        local success, errorMessage = pcall(function()
+            -- Freeze the player before teleporting to prevent possible crashes
+            Player.Character.HumanoidRootPart.Anchored = true
+            TPS:TeleportToPlaceInstance(_place, Server.id, Player)
+        end)
+        if not success then
+            warn("Failed to teleport: " .. errorMessage)
+        end
+    else
+        warn("No servers available to teleport to.")
+    end
+end
+
+-- Main loop: attempt to hop every 2 minutes
+while true do
+    wait(time_to_wait) -- Wait for the specified time before hopping
+    HopToServer()
+end
